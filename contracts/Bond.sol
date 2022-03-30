@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.9;
 
+import {ERC20CappedUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20CappedUpgradeable.sol";
+
 import {ERC20BurnableUpgradeable, ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
@@ -18,11 +19,11 @@ import {FixedPointMathLib} from "./utils/FixedPointMathLib.sol";
     @dev External calls to tokens used for collateral and payment are used throughout to transfer and check balances
     there is risk that these tokens are malicious and each one should be carefully inspected before being trusted. 
 */
+
 contract Bond is
-    Initializable,
-    ERC20Upgradeable,
     AccessControlUpgradeable,
     ERC20BurnableUpgradeable,
+    ERC20CappedUpgradeable,
     ReentrancyGuard
 {
     using SafeERC20 for IERC20Metadata;
@@ -35,7 +36,6 @@ contract Bond is
             After this date, a bond token can be redeemed for the payment token, but cannot be converted.
     */
     uint256 public maturityDate;
-
     /**
         @notice The address of the ERC20 token this bond will be redeemable for at maturity
             which is paid by the borrower to unlock their collateral
@@ -62,12 +62,6 @@ contract Bond is
     uint256 public convertibleRatio;
 
     /**
-        @notice the max amount of bonds able to be minted and cannot be changed
-        @dev checked in the `mint` function to limit `totalSupply` exceeding this number
-    */
-    uint256 public maxSupply;
-
-    /**
         @notice this role permits the withdraw of collateral from the contract
         @dev this is assigned to owner in `initialize`
             the owner can assign other addresses with this role to enable their withdraw
@@ -82,6 +76,16 @@ contract Bond is
     bytes32 public constant MINT_ROLE = keccak256("MINT_ROLE");
 
     uint256 internal constant ONE = 1e18;
+
+    /**
+        @dev a flag to track if the bond has matured upon a check to the maturity date
+    */
+    bool internal reachedMaturity;
+
+    /**
+        @dev the amount of payment tokens when the above flag is toggled
+    */
+    uint256 internal paymentTokensAtMaturity;
 
     /**
         @notice emitted when a collateral is deposited for a bond
@@ -163,9 +167,6 @@ contract Bond is
     /// @notice collateralRatio must be greater than convertibleRatio
     error CollateralRatioLessThanConvertibleRatio();
 
-    /// @notice attempted to mint bonds that would exceeded maxSupply
-    error BondSupplyExceeded();
-
     /// @notice attempted to pay after payment was met
     error PaymentMet();
 
@@ -225,7 +226,7 @@ contract Bond is
         address _collateralToken,
         uint256 _collateralRatio,
         uint256 _convertibleRatio,
-        uint256 _maxSupply
+        uint256 maxSupply
     ) external initializer {
         if (_collateralRatio < _convertibleRatio) {
             revert CollateralRatioLessThanConvertibleRatio();
@@ -238,15 +239,12 @@ contract Bond is
         }
 
         __ERC20_init(bondName, bondSymbol);
-        __ERC20Burnable_init();
-
+        __ERC20Capped_init(maxSupply);
         maturityDate = _maturityDate;
         paymentToken = _paymentToken;
         collateralToken = _collateralToken;
         collateralRatio = _collateralRatio;
         convertibleRatio = _convertibleRatio;
-        maxSupply = _maxSupply;
-
         _computeScalingFactor(paymentToken);
 
         _grantRole(DEFAULT_ADMIN_ROLE, owner);
@@ -256,7 +254,7 @@ contract Bond is
 
     /**
         @notice mints the amount of specified bonds by transferring in collateral
-        @dev Bonds to mint is bounded by maxSupply
+        @dev Bonds to mint is capped by the ERC20CappedUpgradeable inherited contract
             Mint event is always emitted.
             CollateralDeposit is emitted unless the bond is uncollateralized and
             therefore requires no collateral to mint bonds.
@@ -269,10 +267,6 @@ contract Bond is
         notFullyPaid
         nonReentrant
     {
-        if (totalSupply() + bonds > maxSupply) {
-            revert BondSupplyExceeded();
-        }
-
         uint256 collateralToDeposit = previewMintBeforeMaturity(bonds);
 
         _mint(_msgSender(), bonds);
@@ -484,7 +478,7 @@ contract Bond is
         @return the amount of collateral received
      */
     function previewWithdraw() public view returns (uint256) {
-        uint256 tokensCoveredByPayment = _upscale(totalPaid());
+        uint256 tokensCoveredByPayment = _upscale(paymentTokensAtMaturity);
         uint256 collateralTokensRequired;
         if (tokensCoveredByPayment >= totalSupply()) {
             collateralTokensRequired = 0;
@@ -501,7 +495,7 @@ contract Bond is
         uint256 totalRequiredCollateral;
 
         if (isFullyPaid()) {
-            totalRequiredCollateral = isMature()
+            totalRequiredCollateral = block.timestamp >= maturityDate
                 ? 0
                 : convertibleTokensRequired;
         } else {
@@ -530,12 +524,12 @@ contract Bond is
         view
         returns (uint256, uint256)
     {
-        uint256 paidAmount = _upscale(totalPaid());
+        uint256 paidAmount = _upscale(paymentTokensAtMaturity);
         if (isFullyPaid()) {
             paidAmount = totalSupply();
         }
         uint256 paymentTokensToSend = bonds.mulDivDown(
-            totalPaid(),
+            paymentTokensAtMaturity,
             totalSupply()
         );
 
@@ -573,15 +567,25 @@ contract Bond is
         if (totalSupply() == 0) {
             return false;
         }
-        return _upscale(totalPaid()) >= totalSupply();
+        return _upscale(paymentTokensAtMaturity) >= totalSupply();
     }
 
     /**
         @notice checks if the maturity date has passed (including current block timestamp)
+        @dev the first time reachedMaturity is flipped, record the payment amount to determine whether or not
+            the bond was fully paid at maturity.
         @return whether or not the bond has reached the maturity date
     */
-    function isMature() public view returns (bool) {
-        return block.timestamp >= maturityDate;
+    function isMature() public returns (bool) {
+        bool maturityReached = block.timestamp >= maturityDate;
+        if (maturityReached) {
+            if (!reachedMaturity) {
+                reachedMaturity = true;
+                paymentTokensAtMaturity = totalPaid();
+            }
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -590,6 +594,14 @@ contract Bond is
     function amountOwed() public view returns (uint256) {
         uint256 amountUnpaid = totalSupply() - _upscale(totalPaid());
         return amountUnpaid.mulDivUp(ONE, _computeScalingFactor(paymentToken));
+    }
+
+    function _mint(address to, uint256 amount)
+        internal
+        virtual
+        override(ERC20CappedUpgradeable, ERC20Upgradeable)
+    {
+        ERC20CappedUpgradeable._mint(to, amount);
     }
 
     /**
