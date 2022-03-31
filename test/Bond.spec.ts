@@ -438,7 +438,7 @@ describe("Bond", () => {
           });
 
           it("should revert when called by non-minter", async () => {
-            await expect(bond.connect(attacker).mint(0)).to.be.revertedWith(
+            await expect(bond.connect(attacker).mint()).to.be.revertedWith(
               `AccessControl: account ${attacker.address.toLowerCase()} is missing role ${mintRole}`
             );
           });
@@ -531,20 +531,18 @@ describe("Bond", () => {
           });
 
           it("should not mint more than max supply", async () => {
-            await expect(
-              bond.mint(config.targetBondSupply.add(1))
-            ).to.be.revertedWith("ERC20Capped: cap exceeded");
+            await expect(bond.mint()).to.be.revertedWith(
+              "ERC20Capped: cap exceeded"
+            );
           });
 
           it("should not mint after maturity", async () => {
             await ethers.provider.send("evm_mine", [config.maturityDate]);
-            await expect(bond.mint(config.targetBondSupply)).to.be.revertedWith(
-              "BondPastMaturity"
-            );
+            await expect(bond.mint()).to.be.revertedWith("BondPastMaturity");
           });
 
           it("should return amount owed scaled to mint amount", async () => {
-            await expect(bond.mint(config.targetBondSupply));
+            await expect(bond.mint());
             expect(await bond.amountOwed()).to.equal(
               downscaleAmount(config.targetBondSupply, decimals)
             );
@@ -560,7 +558,7 @@ describe("Bond", () => {
             );
           });
           it("should revert when called by non-minter", async () => {
-            await expect(bond.connect(attacker).mint(0)).to.be.revertedWith(
+            await expect(bond.connect(attacker).mint()).to.be.revertedWith(
               `AccessControl: account ${attacker.address.toLowerCase()} is missing role ${mintRole}`
             );
           });
@@ -653,20 +651,18 @@ describe("Bond", () => {
           });
 
           it("should not mint more than max supply", async () => {
-            await expect(
-              bond.mint(config.targetBondSupply.add(1))
-            ).to.be.revertedWith("ERC20Capped: cap exceeded");
+            await expect(bond.mint()).to.be.revertedWith(
+              "ERC20Capped: cap exceeded"
+            );
           });
 
           it("should not mint after maturity", async () => {
             await ethers.provider.send("evm_mine", [config.maturityDate]);
-            await expect(bond.mint(config.targetBondSupply)).to.be.revertedWith(
-              "BondPastMaturity"
-            );
+            await expect(bond.mint()).to.be.revertedWith("BondPastMaturity");
           });
 
           it("should return amount owed scaled to mint amount", async () => {
-            await expect(bond.mint(config.targetBondSupply));
+            await expect(bond.mint());
             expect(await bond.amountOwed()).to.equal(
               downscaleAmount(config.targetBondSupply, decimals)
             );
@@ -678,7 +674,7 @@ describe("Bond", () => {
             config = bondWithTokens.uncollateralized.config;
           });
           it("should revert when called by non-minter", async () => {
-            await expect(bond.connect(attacker).mint(0)).to.be.revertedWith(
+            await expect(bond.connect(attacker).mint()).to.be.revertedWith(
               `AccessControl: account ${attacker.address.toLowerCase()} is missing role ${mintRole}`
             );
           });
@@ -720,20 +716,18 @@ describe("Bond", () => {
           });
 
           it("should not mint more than max supply", async () => {
-            await expect(
-              bond.mint(config.targetBondSupply.add(1))
-            ).to.be.revertedWith("ERC20Capped: cap exceeded");
+            await expect(bond.mint()).to.be.revertedWith(
+              "ERC20Capped: cap exceeded"
+            );
           });
 
           it("should not mint after maturity", async () => {
             await ethers.provider.send("evm_mine", [config.maturityDate]);
-            await expect(bond.mint(config.targetBondSupply)).to.be.revertedWith(
-              "BondPastMaturity"
-            );
+            await expect(bond.mint()).to.be.revertedWith("BondPastMaturity");
           });
 
           it("should return amount owed scaled to mint amount", async () => {
-            await expect(bond.mint(config.targetBondSupply));
+            await expect(bond.mint());
             expect(await bond.amountOwed()).to.equal(
               downscaleAmount(config.targetBondSupply, decimals)
             );
@@ -751,7 +745,7 @@ describe("Bond", () => {
               .approve(bond.address, getTargetCollateral(config));
           });
           it("should not mint tokens when no collateral is transferred", async () => {
-            await expect(bond.mint(config.targetBondSupply)).to.be.revertedWith(
+            await expect(bond.mint()).to.be.revertedWith(
               "UnexpectedTokenOperation"
             );
           });
@@ -766,7 +760,7 @@ describe("Bond", () => {
               bond.address,
               getTargetCollateral(config)
             );
-            await expect(bond.mint(config.targetBondSupply)).to.not.be.reverted;
+            await expect(bond.mint()).to.not.be.reverted;
             await paymentToken.approve(
               bond.address,
               config.targetBondSupply
@@ -821,7 +815,7 @@ describe("Bond", () => {
 
           it("should fail on fully paid bonds attempt to mint", async () => {
             await (await bond.pay(getTargetPayment(config, decimals))).wait();
-            await expect(bond.mint(ONE)).to.be.revertedWith(
+            await expect(bond.mint()).to.be.revertedWith(
               "BondsCanNoLongerBeMinted"
             );
           });
@@ -869,7 +863,7 @@ describe("Bond", () => {
               bond.address,
               getTargetCollateral(config)
             );
-            await bond.mint(config.targetBondSupply);
+            await bond.mint();
           });
           it(`should make excess collateral available to withdraw when zero amount are burned`, async () => {
             await burnAndWithdraw({
@@ -1053,7 +1047,7 @@ describe("Bond", () => {
               bond.address,
               getTargetCollateral(config)
             );
-            await bond.mint(config.targetBondSupply);
+            await bond.mint();
           });
 
           it("should make zero collateral available to withdraw when zero bonds are burned", async () => {
@@ -1198,7 +1192,7 @@ describe("Bond", () => {
               bond.address,
               getTargetCollateral(UncollateralizedBondConfig)
             );
-            await bond.mint(config.targetBondSupply);
+            await bond.mint();
           });
           it(`should have zero collateral available to withdraw when they are burned`, async () => {
             await burnAndWithdraw({
@@ -1276,7 +1270,7 @@ describe("Bond", () => {
               bond.address,
               getTargetCollateral(config)
             );
-            await bond.mint(config.targetBondSupply);
+            await bond.mint();
             await bond.transfer(
               bondHolder.address,
               utils.parseUnits("4000", 18)
@@ -1493,7 +1487,7 @@ describe("Bond", () => {
               bond.address,
               getTargetCollateral(config)
             );
-            await bond.mint(config.targetBondSupply);
+            await bond.mint();
             await bond.transfer(
               bondHolder.address,
               utils.parseUnits("4000", 18)
@@ -1648,7 +1642,7 @@ describe("Bond", () => {
               bond.address,
               getTargetCollateral(config)
             );
-            await bond.mint(config.targetBondSupply);
+            await bond.mint();
             await bond.transfer(bondHolder.address, config.targetBondSupply);
           });
 

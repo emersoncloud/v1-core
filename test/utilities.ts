@@ -135,10 +135,8 @@ export const previewMintAndMint = async ({
   mintAmount: BigNumber;
   collateralToDeposit: BigNumber;
 }) => {
-  expect(await bond.previewMintBeforeMaturity(mintAmount)).to.equal(
-    collateralToDeposit
-  );
-  await expect(bond.mint(mintAmount)).to.not.be.reverted;
+  expect(await bond.previewMintBeforeMaturity()).to.equal(collateralToDeposit);
+  await expect(bond.mint()).to.not.be.reverted;
   expect(await bond.totalSupply()).to.equal(mintAmount);
   expect(await collateralToken.balanceOf(bond.address)).to.be.equal(
     collateralToDeposit
@@ -154,7 +152,7 @@ export const failPreviewMint = async ({
   mintAmount: BigNumber;
   collateralToDeposit: BigNumber;
 }) => {
-  expect(await bond.previewMintBeforeMaturity(mintAmount)).to.not.equal(
+  expect(await bond.previewMintBeforeMaturity()).to.not.equal(
     collateralToDeposit
   );
 };

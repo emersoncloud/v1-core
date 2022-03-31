@@ -255,20 +255,18 @@ contract Bond is
             Mint event is always emitted.
             CollateralDeposit is emitted unless the bond is uncollateralized and
             therefore requires no collateral to mint bonds.
-        @param bonds the amount of bonds to mint
     */
-    function mint(uint256 bonds)
+    function mint()
         external
-        onlyRole(MINT_ROLE)
+        onlyRole(DEFAULT_ADMIN_ROLE)
         beforeMaturity
-        notFullyPaid
         nonReentrant
     {
-        uint256 collateralToDeposit = previewMintBeforeMaturity(bonds);
+        uint256 collateralToDeposit = previewMintBeforeMaturity();
 
-        _mint(_msgSender(), bonds);
+        _mint(_msgSender(), cap());
 
-        emit Mint(_msgSender(), bonds);
+        emit Mint(_msgSender(), cap());
 
         if (collateralToDeposit > 0) {
             uint256 collateralDeposited = _safeTransferIn(
@@ -419,15 +417,10 @@ contract Bond is
     /**
         @notice preview the amount of collateral tokens required to mint the given bond tokens
         @dev this function rounds up the amount of required collateral for the number of bonds to mint
-        @param bonds the amount of desired bonds to mint
         @return amount of collateral required
     */
-    function previewMintBeforeMaturity(uint256 bonds)
-        public
-        view
-        returns (uint256)
-    {
-        return bonds.mulDivUp(collateralRatio, ONE);
+    function previewMintBeforeMaturity() public view returns (uint256) {
+        return cap().mulDivUp(collateralRatio, ONE);
     }
 
     /**

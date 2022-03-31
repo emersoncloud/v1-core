@@ -281,7 +281,7 @@ describe("e2e: Create -> Mint -> Convert -> Pay -> Withdraw -> Mature -> Redeem"
           });
 
           it("should revert when called by non-minter", async () => {
-            await expect(bond.connect(attacker).mint(0)).to.be.revertedWith(
+            await expect(bond.connect(attacker).mint()).to.be.revertedWith(
               `AccessControl: account ${attacker.address.toLowerCase()} is missing role ${mintRole}`
             );
           });
@@ -296,22 +296,19 @@ describe("e2e: Create -> Mint -> Convert -> Pay -> Withdraw -> Mature -> Redeem"
           });
 
           it(`should preview mint and mint with quarter target`, async () => {
-            await expect(bond.mint(config.targetBondSupply.div(4))).to.not.be
-              .reverted;
+            await expect(bond.mint()).to.not.be.reverted;
           });
 
           it(`should preview mint and mint with quarter target`, async () => {
-            await expect(bond.mint(config.targetBondSupply.div(4))).to.not.be
-              .reverted;
+            await expect(bond.mint()).to.not.be.reverted;
           });
 
           it(`should preview mint and mint with half target`, async () => {
-            await expect(bond.mint(config.targetBondSupply.div(2))).to.not.be
-              .reverted;
+            await expect(bond.mint()).to.not.be.reverted;
           });
 
           it("should not mint more than max supply", async () => {
-            await expect(bond.mint(BigNumber.from(1))).to.be.revertedWith(
+            await expect(bond.mint()).to.be.revertedWith(
               "ERC20Capped: cap exceeded"
             );
           });
@@ -509,7 +506,7 @@ describe("e2e: Create -> Mint -> Convert -> Pay -> Withdraw -> Mature -> Redeem"
           });
 
           it("should revert when called by non-minter", async () => {
-            await expect(bond.connect(attacker).mint(0)).to.be.revertedWith(
+            await expect(bond.connect(attacker).mint()).to.be.revertedWith(
               `AccessControl: account ${attacker.address.toLowerCase()} is missing role ${mintRole}`
             );
           });
@@ -524,22 +521,19 @@ describe("e2e: Create -> Mint -> Convert -> Pay -> Withdraw -> Mature -> Redeem"
           });
 
           it(`should preview mint and mint with quarter target`, async () => {
-            await expect(bond.mint(config.targetBondSupply.div(4))).to.not.be
-              .reverted;
+            await expect(bond.mint()).to.not.be.reverted;
           });
 
           it(`should preview mint and mint with quarter target`, async () => {
-            await expect(bond.mint(config.targetBondSupply.div(4))).to.not.be
-              .reverted;
+            await expect(bond.mint()).to.not.be.reverted;
           });
 
           it(`should preview mint and mint with half target`, async () => {
-            await expect(bond.mint(config.targetBondSupply.div(2))).to.not.be
-              .reverted;
+            await expect(bond.mint()).to.not.be.reverted;
           });
 
           it("should not mint more than max supply", async () => {
-            await expect(bond.mint(BigNumber.from(1))).to.be.revertedWith(
+            await expect(bond.mint()).to.be.revertedWith(
               "ERC20Capped: cap exceeded"
             );
           });
