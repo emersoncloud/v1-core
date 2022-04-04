@@ -162,7 +162,10 @@ contract BondFactory is AccessControl {
             _msgSender(),
             clone,
             collateralToken,
-            maxBonds.mulDivUp(collateralRatio, ONE)
+            maxBonds.mulDivUp(
+                collateralRatio,
+                IERC20Metadata(paymentToken).decimals()
+            )
         );
 
         Bond(clone).initialize(

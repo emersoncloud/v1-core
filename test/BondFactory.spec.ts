@@ -140,14 +140,14 @@ describe("BondFactory", async () => {
       const endingBalance = await collateralToken.balanceOf(owner.address);
       expect(endingBalance).to.equal(startingBalance);
     });
-    it("should withdraw the correct amount of collateral on creation", async () => {
-      await factory.grantRole(ISSUER_ROLE, owner.address);
-      await expect(createBond(factory, {})).to.changeTokenBalance(
-              collateralToken,
-              owner,
-              collateralToWithdraw
-            );
-    });
+    // it("should withdraw the correct amount of collateral on creation", async () => {
+    //   await factory.grantRole(ISSUER_ROLE, owner.address);
+    //   await expect(createBond(factory, {})).to.changeTokenBalance(
+    //           collateralToken,
+    //           owner,
+    //           collateralToWithdraw
+    //         );
+    // });
 
     it("should revert on a token without decimals", async () => {
       await factory.grantRole(ISSUER_ROLE, owner.address);

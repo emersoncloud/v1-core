@@ -146,10 +146,10 @@ contract Bond is
 
     /// @notice attempted to perform an action that would do nothing
     error ZeroAmount();
-    
+
     /// @notice There is no excess payment in the contract that is avaliable to withdraw
     error NoPaymentToWithdraw();
-    
+
     /// @dev used to confirm the bond has not yet matured
     modifier beforeMaturity() {
         if (isMature()) {
@@ -378,7 +378,7 @@ contract Bond is
         @return the amount of collateral received
      */
     function previewWithdraw() public view returns (uint256) {
-        uint256 tokensCoveredByPayment = _upscale(paymentBalance());
+        uint256 tokensCoveredByPayment = paymentBalance();
         uint256 collateralTokensRequired;
         if (tokensCoveredByPayment >= totalSupply()) {
             collateralTokensRequired = 0;
@@ -424,11 +424,9 @@ contract Bond is
         view
         returns (uint256, uint256)
     {
-        uint256 paidAmount = isFullyPaid()
-            ? totalSupply()
-            : _upscale(paymentBalance());
+        uint256 paidAmount = isFullyPaid() ? totalSupply() : paymentBalance();
         uint256 paymentTokensToSend = bonds.mulDivDown(
-            _downscale(paidAmount),
+            paidAmount,
             totalSupply()
         );
 
@@ -479,7 +477,7 @@ contract Bond is
         @return whether or not the bond is fully paid
     */
     function isFullyPaid() public view returns (bool) {
-        return _upscale(paymentBalance()) >= totalSupply();
+        return paymentBalance() >= totalSupply();
     }
 
     /**
@@ -494,11 +492,11 @@ contract Bond is
         @notice the amount of payment tokens required to fully pay the contract
     */
     function amountOwed() public view returns (uint256) {
-        if (totalSupply() <= _upscale(paymentBalance())) {
+        if (totalSupply() <= (paymentBalance())) {
             return 0;
         }
-        uint256 amountUnpaid = totalSupply() - _upscale(paymentBalance());
-        return amountUnpaid.mulDivUp(ONE, _computeScalingFactor(paymentToken));
+        uint256 amountUnpaid = totalSupply() - (paymentBalance());
+        return amountUnpaid;
     }
 
     /**
@@ -506,11 +504,11 @@ contract Bond is
         @return overpayment amount that was overpaid 
     */
     function amountOverPaid() public view returns (uint256 overpayment) {
-        if (totalSupply() >= _upscale(paymentBalance())) {
+        if (totalSupply() >= (paymentBalance())) {
             return 0;
         }
-        uint256 amountOverpaid = _upscale(paymentBalance()) - totalSupply();
-        return _downscale(amountOverpaid);
+        uint256 amountOverpaid = paymentBalance() - totalSupply();
+        return amountOverpaid;
     }
 
     /**
@@ -520,27 +518,4 @@ contract Bond is
         @param token the ERC20 token to compute
         @return scaler above a 1e18 base (1e<decimals> * 1e18)
     */
-    function _computeScalingFactor(address token)
-        internal
-        view
-        returns (uint256)
-    {
-        uint256 tokenDecimals = IERC20Metadata(token).decimals();
-
-        uint256 decimalsDifference = 18 - tokenDecimals;
-        return ONE * 10**decimalsDifference;
-    }
-
-    /**
-        @dev this function takes the amount of paymentTokens and scales to bond
-        tokens. Since the paymentToken may have different decimals than the 
-        bond tokens, scaling to the same base allows calculations between them.
-    */
-    function _upscale(uint256 amount) internal view returns (uint256) {
-        return amount.mulDivUp(_computeScalingFactor(paymentToken), ONE);
-    }
-
-    function _downscale(uint256 amount) internal view returns (uint256) {
-        return amount.mulDivDown(ONE, _computeScalingFactor(paymentToken));
-    }
 }
